@@ -202,11 +202,13 @@ function applyDerivedStateFromProps(
 const classComponentUpdater = {
   isMounted,
   enqueueSetState(inst, payload, callback) {
-    const fiber = getInstance(inst);
-    const eventTime = requestEventTime();
-    const lane = requestUpdateLane(fiber);
-
+    const fiber = getInstance(inst);  //获取当前组件对应的fiber节点
+    console.log(fiber,'fiber')
+    const eventTime = requestEventTime();  // 获取当前事件触发的时间
+    const lane = requestUpdateLane(fiber); // 获取到当前事件对应的Lane优先级
+    // 创建更新对象，将需要更新的内容挂载到payload上
     const update = createUpdate(eventTime, lane);
+    // payload  即将更新的state的数据
     update.payload = payload;
     if (callback !== undefined && callback !== null) {
       if (__DEV__) {
@@ -214,7 +216,7 @@ const classComponentUpdater = {
       }
       update.callback = callback;
     }
-
+    // 将更新对象添加进更新队列中
     enqueueUpdate(fiber, update, lane);
     const root = scheduleUpdateOnFiber(fiber, lane, eventTime);
     if (root !== null) {

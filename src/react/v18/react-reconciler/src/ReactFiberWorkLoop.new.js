@@ -441,8 +441,11 @@ export function getCurrentTime() {
 
 export function requestUpdateLane(fiber: Fiber): Lane {
   // Special cases
+  console.log(workInProgressRootPingedLanes,'workInProgressRootPingedLanes')
   const mode = fiber.mode;
+  // 获取到当前渲染的模式：sync mode（同步模式） 或 concurrent mode（并发模式）
   if ((mode & ConcurrentMode) === NoMode) {
+    // 检查当前渲染模式是不是并发模式，等于NoMode表示不是，则使用同步模式渲染
     return (SyncLane: Lane);
   } else if (
     !deferRenderPhaseUpdateToNextBatch &&
@@ -458,10 +461,22 @@ export function requestUpdateLane(fiber: Fiber): Lane {
     // This behavior is only a fallback. The flag only exists until we can roll
     // out the setState warning, since existing code might accidentally rely on
     // the current behavior.
+
+    // workInProgressRootRenderLanes是在任务执行阶段赋予的需要更新的fiber节点上的lane的值
+    // 当新的更新任务产生时，workInProgressRootRenderLanes不为空，则表示有任务正在执行
+    // 那么则直接返回这个正在执行的任务的lane，那么当前新的任务则会和现有的任务进行一次批量更新
     return pickArbitraryLane(workInProgressRootRenderLanes);
   }
 
   const isTransition = requestCurrentTransition() !== NoTransition;
+  // 检查当前事件是否是过渡优先级
+  // 如果是的话，则返回一个过渡优先级
+  // 过渡优先级的分配规则：
+  // 产生的任务A给它分配为TransitionLanes的第一位：TransitionLane1 = 0b0000000000000000000000001000000
+  // 现在又产生了任务B，那么则从A的位置向左移动一位： TransitionLane2 = 0b0000000000000000000000010000000
+  // 后续产生的任务则会一次向后移动，直到移动到最后一位
+  // 过渡优先级共有16位:                         TransitionLanes = 0b0000000001111111111111111000000
+  // 当所有位都使用完后，则又从第一位开始赋予事件过渡优先级
   if (isTransition) {
     if (__DEV__ && ReactCurrentBatchConfig.transition !== null) {
       const transition = ReactCurrentBatchConfig.transition;
@@ -491,6 +506,8 @@ export function requestUpdateLane(fiber: Fiber): Lane {
   // The opaque type returned by the host config is internally a lane, so we can
   // use that directly.
   // TODO: Move this type conversion to the event priority module.
+
+  // 在react的内部事件中触发的更新事件，比如：onClick等，会在触发事件的时候为当前事件设置一个优先级，可以直接拿来使用
   const updateLane: Lane = (getCurrentUpdatePriority(): any);
   if (updateLane !== NoLane) {
     return updateLane;
@@ -502,6 +519,8 @@ export function requestUpdateLane(fiber: Fiber): Lane {
   // The opaque type returned by the host config is internally a lane, so we can
   // use that directly.
   // TODO: Move this type conversion to the event priority module.
+  
+  // 在react的外部事件中触发的更新事件，比如：setTimeout等，会在触发事件的时候为当前事件设置一个优先级，可以直接拿来使用
   const eventLane: Lane = (getCurrentEventPriority(): any);
   return eventLane;
 }
@@ -525,13 +544,18 @@ export function scheduleUpdateOnFiber(
   lane: Lane,
   eventTime: number,
 ): FiberRoot | null {
+  // 检查是否做了无限循环更新，比如：在render函数中调用了setState，如果是则会报错提示
   checkForNestedUpdates();
-
+  console.log(lane,'lane')
   if (__DEV__) {
     if (isRunningInsertionEffect) {
       console.error('useInsertionEffect must not schedule updates.');
     }
   }
+  // 收集需要更新的子节点的lane，存放在父fiber上的childLanes上
+  // 更新当前fiber节点的lannes,表示当前节点需要更新
+  // 从当前需要更新的fiber节点向上遍历，遍历到根节点（root fiber）并更新每个fiber节点上的childLanes属性
+  // childLanes有值表示当前节点下有子节点需要更新
 
   const root = markUpdateLaneFromFiberToRoot(fiber, lane);
   if (root === null) {
@@ -545,6 +569,8 @@ export function scheduleUpdateOnFiber(
   }
 
   // Mark that the root has a pending update.
+  // 将当前需要更新的lane添加到fiber root的pendingLanes属性上，表示有新的更新任务需要被执行
+  // 通过计算出当前lane的位置，并添加事件触发时间到eventTimes中
   markRootUpdated(root, lane, eventTime);
 
   if (
@@ -629,6 +655,7 @@ export function scheduleUpdateOnFiber(
         // effect of interrupting the current render and switching to the update.
         // TODO: Make sure this doesn't override pings that happen while we've
         // already started rendering.
+        console.log(workInProgressRootRenderLanes, 'workInProgressRootRenderLanes')
         markRootSuspended(root, workInProgressRootRenderLanes);
       }
     }
@@ -682,6 +709,8 @@ function markUpdateLaneFromFiberToRoot(
   lane: Lane,
 ): FiberRoot | null {
   // Update the source fiber's lanes
+  // 更新当前节点的lanes，表示当前节点需要更新,
+  // 表示当前fiber需要更新，如果fiber节点对应的alternate不为空的话，表示是在更新，并且会同步更新alternate上的lanes。
   sourceFiber.lanes = mergeLanes(sourceFiber.lanes, lane);
   let alternate = sourceFiber.alternate;
   if (alternate !== null) {
@@ -698,6 +727,8 @@ function markUpdateLaneFromFiberToRoot(
   // Walk the parent path to the root and update the child lanes.
   let node = sourceFiber;
   let parent = sourceFiber.return;
+  // 从当前需要更新的fiber节点向上遍历直到根fiber节点（root fiber），更新每个fiber节点的childLanes
+  // 在之后会通过childLanes来判断当前fiber节点下是否有子节点需要更新
   while (parent !== null) {
     parent.childLanes = mergeLanes(parent.childLanes, lane);
     alternate = parent.alternate;
@@ -811,6 +842,9 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
 
   // Schedule a new callback.
   let newCallbackNode;
+    // 开始调度任务
+  // 判断新任务的优先级是否是同步优先级
+  // 是则使用同步渲染模式，否则使用并发渲染模式（时间分片）
   if (newCallbackPriority === SyncLane) {
     // Special case: Sync React callbacks are scheduled on a special
     // internal queue
@@ -852,7 +886,9 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
     newCallbackNode = null;
   } else {
     let schedulerPriorityLevel;
+    // lanesToEventPriority函数将lane的优先级转换为React事件的优先级，然后再根据React事件的优先级转换为Scheduler的优先级
     switch (lanesToEventPriority(nextLanes)) {
+      //调度优先级
       case DiscreteEventPriority:
         schedulerPriorityLevel = ImmediateSchedulerPriority;
         break;
@@ -869,6 +905,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
         schedulerPriorityLevel = NormalSchedulerPriority;
         break;
     }
+    //将react与scheduler连接，将react产生的事件作为任务使用scheduler调度
     newCallbackNode = scheduleCallback(
       schedulerPriorityLevel,
       performConcurrentWorkOnRoot.bind(null, root),

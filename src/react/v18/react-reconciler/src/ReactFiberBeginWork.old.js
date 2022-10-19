@@ -216,7 +216,7 @@ import {
   mountClassInstance,
   resumeMountClassInstance,
   updateClassInstance,
-} from './ReactFiberClassComponent.old';
+} from './ReactFiberClassComponent.new';
 import {resolveDefaultProps} from './ReactFiberLazyComponent.old';
 import {
   resolveLazyComponentTag,

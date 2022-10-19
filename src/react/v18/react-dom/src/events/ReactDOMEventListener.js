@@ -89,15 +89,16 @@ export function createEventListenerWrapperWithPriority(
   eventSystemFlags: EventSystemFlags,
 ): Function {
   const eventPriority = getEventPriority(domEventName);
+  console.log(eventPriority)
   let listenerWrapper;
   switch (eventPriority) {
-    case DiscreteEventPriority:
+    case DiscreteEventPriority: // 同步代码优先级最高 1
       listenerWrapper = dispatchDiscreteEvent;
       break;
-    case ContinuousEventPriority:
+    case ContinuousEventPriority: //连续事件优先级 3
       listenerWrapper = dispatchContinuousEvent;
       break;
-    case DefaultEventPriority:
+    case DefaultEventPriority:  //优先级16
     default:
       listenerWrapper = dispatchEvent;
       break;
@@ -116,14 +117,14 @@ function dispatchDiscreteEvent(
   container,
   nativeEvent,
 ) {
-  const previousPriority = getCurrentUpdatePriority();
+  const previousPriority = getCurrentUpdatePriority(); //获取当前更新优先级
   const prevTransition = ReactCurrentBatchConfig.transition;
   ReactCurrentBatchConfig.transition = null;
   try {
-    setCurrentUpdatePriority(DiscreteEventPriority);
+    setCurrentUpdatePriority(DiscreteEventPriority);   //设置优先级
     dispatchEvent(domEventName, eventSystemFlags, container, nativeEvent);
   } finally {
-    setCurrentUpdatePriority(previousPriority);
+    setCurrentUpdatePriority(previousPriority);  //兜底策略
     ReactCurrentBatchConfig.transition = prevTransition;
   }
 }
@@ -408,6 +409,7 @@ export function findInstanceBlockingEvent(
 }
 
 export function getEventPriority(domEventName: DOMEventName): * {
+  console.log(domEventName)
   switch (domEventName) {
     // Used by SimpleEventPlugin:
     case 'cancel':

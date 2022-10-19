@@ -26,6 +26,7 @@ class EventDemo extends React.Component{
   }
   onParentClick = () => {
     console.log('父级元素的点击事件被触发了');
+    this.setState({ count:  this.state.count + 1})
   }
   onParentClickCapture = () => {
     console.log('父级元素捕获到点击事件');
@@ -40,6 +41,7 @@ class EventDemo extends React.Component{
         className={'counter-parent'}
         onClick={this.onParentClick}
         onClickCapture={this.onParentClickCapture}
+        qren="true"
     >
       counter-parent
       <div
@@ -47,7 +49,7 @@ class EventDemo extends React.Component{
           className={'counter'}
       >
         counter：{count}
-        <div className={'sub-counter'} onClick={this.onSubCounterClick}>
+        <div className={'sub-counter'} qrenEnd="true" onClick={this.onSubCounterClick}>
           子组件
         </div>
       </div>

@@ -34,7 +34,7 @@ import {
   createFiberFromText,
   createFiberFromPortal,
 } from './ReactFiber.old';
-import {emptyRefsObject} from './ReactFiberClassComponent.old';
+import {emptyRefsObject} from './ReactFiberClassComponent.new';
 import {isCompatibleFamilyForHotReloading} from './ReactFiberHotReloading.old';
 import {StrictLegacyMode} from './ReactTypeOfMode';
 import {getIsHydrating} from './ReactFiberHydrationContext.old';

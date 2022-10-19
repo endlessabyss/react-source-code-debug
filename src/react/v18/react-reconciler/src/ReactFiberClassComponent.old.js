@@ -203,6 +203,7 @@ const classComponentUpdater = {
   isMounted,
   enqueueSetState(inst, payload, callback) {
     const fiber = getInstance(inst);
+    console.log(fiber)
     const eventTime = requestEventTime();
     const lane = requestUpdateLane(fiber);
 
